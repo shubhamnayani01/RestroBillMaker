@@ -2072,7 +2072,7 @@
       const total = subtotal - discAmt + taxAmt;
       const invoiceNo = 'INV-' + String(bills.length + 1).padStart(4, '0');
       const bill = {
-        id: uid(),
+        id: crypto.randomUUID(),
         invoiceNo,
         date: new Date().toISOString(),
         items: currentOrder.map(o => ({ id: o.menuItem.id, name: o.menuItem.name, price: o.menuItem.price, qty: o.qty })),
@@ -2096,7 +2096,6 @@
   const { error } = await db
     .from("bills")
     .insert([{
-      id: bill.id,
       invoice_no: bill.invoiceNo,
       date: bill.date,
       items: bill.items,
