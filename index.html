@@ -2088,10 +2088,19 @@
       bills.push(bill);
       saveBills();
       try {
-        const { error } = await supabase
-          .from("bills")
-          .insert([bill]);
-
+       await supabase
+  .from("bills")
+  .insert([{
+    id: bill.id,
+    invoice_no: bill.invoiceNo,
+    date: bill.date,
+    items: bill.items,
+    subtotal: bill.subtotal,
+    discount: bill.discount,
+    tax: bill.tax,
+    total: bill.total
+  }]);
+console.log("Saved to Supabase");
       if (error) {
         console.error(error);
         alert("Supabase Error");
