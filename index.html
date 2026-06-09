@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+  <!DOCTYPE html>
 <html lang="en" data-theme="light">
 
 <head>
@@ -2106,16 +2106,18 @@
       total: bill.total
     }]);
 
-      if (error) {
-        console.error(error);
-        alert(error.message);
-      } else {
-        console.log("Saved to ");
-      }
-    } catch (err) {
-      console.error(err);
+     if (error) {
+      console.log("SUPABASE ERROR:", error);
+      console.error(error);
+      alert(JSON.stringify(error, null, 2));
+    } else {
+      console.log("Saved to Supabase");
     }
-
+    } catch (err) {
+      console.log("CATCH ERROR:", err);
+      console.error(err);
+      alert(JSON.stringify(err, null, 2));
+    }
       // Show invoice modal
       showInvoiceModal(bill);
       showToast('Bill generated! ' + invoiceNo, 'success');
