@@ -1758,6 +1758,10 @@
      ══════════════════════════════════════════════════════════════════════════ -->
    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
+    const db = supabase.createClient(
+  "https://iahfkijtqlvsgchtvzbi.supabase.co",
+  "sb_publishable_wgTUUBeXrgSWRsP63kQ8oA_JoSSz_qF"
+);
     /* ────────────────────────────────
        LocalStorage Keys
        ──────────────────────────────── */
@@ -2089,7 +2093,7 @@
       bills.push(bill);
       saveBills();
       try {
-  const { error } = await supabase 
+  const { error } = await db
     .from("bills")
     .insert([{
       id: bill.id,
