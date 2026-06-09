@@ -1,0 +1,2640 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+  <title>Restaurant Billing</title>
+  <meta name="description" content="Professional restaurant POS and billing system" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300..700;1,14..32,300..700&display=swap"
+    rel="stylesheet">
+  <!-- jsPDF for PDF generation (the only external dependency) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <style>
+    /* ─── CSS Variables ─── */
+    :root {
+      --bg: #f5f5f5;
+      --surface: #ffffff;
+      --surface2: #f9f9f9;
+      --border: #e5e5e5;
+      --text: #111111;
+      --text2: #555555;
+      --text3: #999999;
+      --primary: #1a1a1a;
+      --primary-fg: #ffffff;
+      --accent: #e8441e;
+      --accent-fg: #ffffff;
+      --success: #16a34a;
+      --danger: #dc2626;
+      --warning: #d97706;
+      --radius: 10px;
+      --radius-sm: 6px;
+      --shadow: 0 1px 4px rgba(0, 0, 0, .08);
+      --shadow-md: 0 4px 16px rgba(0, 0, 0, .10);
+      --nav-h: 60px;
+      --transition: 180ms ease;
+    }
+
+    [data-theme="dark"] {
+      --bg: #0e0e0e;
+      --surface: #1a1a1a;
+      --surface2: #222222;
+      --border: #2a2a2a;
+      --text: #f0f0f0;
+      --text2: #aaaaaa;
+      --text3: #666666;
+      --primary: #f0f0f0;
+      --primary-fg: #111111;
+      --shadow: 0 1px 4px rgba(0, 0, 0, .4);
+      --shadow-md: 0 4px 16px rgba(0, 0, 0, .5);
+    }
+
+    /* ─── Reset ─── */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      font-size: 15px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button {
+      cursor: pointer;
+      border: none;
+      background: none;
+      font: inherit;
+    }
+
+    input,
+    select,
+    textarea {
+      font: inherit;
+    }
+
+    img {
+      max-width: 100%;
+      display: block;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    /* ─── Layout ─── */
+    #app {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* ─── Top Bar ─── */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      height: var(--nav-h);
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      gap: 12px;
+    }
+
+    .topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .topbar-logo {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      background: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .topbar-logo img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .topbar-logo span {
+      color: #fff;
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .topbar-name {
+      font-weight: 600;
+      font-size: 15px;
+      max-width: 160px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Theme toggle */
+    .btn-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text2);
+      transition: background var(--transition), color var(--transition);
+    }
+
+    .btn-icon:hover {
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .btn-icon svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    /* ─── Bottom Nav ─── */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      height: 62px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: stretch;
+    }
+
+    .nav-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      padding: 6px 4px;
+      color: var(--text3);
+      font-size: 11px;
+      font-weight: 500;
+      transition: color var(--transition);
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .nav-item svg {
+      width: 22px;
+      height: 22px;
+    }
+
+    .nav-item.active {
+      color: var(--accent);
+    }
+
+    .nav-item span {
+      letter-spacing: 0.01em;
+    }
+
+    /* ─── Main Content ─── */
+    .main {
+      flex: 1;
+      padding: 16px;
+      padding-bottom: calc(62px + 16px);
+      max-width: 700px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    /* ─── Sections ─── */
+    .section {
+      display: none;
+      animation: fadeIn 200ms ease;
+    }
+
+    .section.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+
+      to {
+        opacity: 1;
+        transform: none;
+      }
+    }
+
+    /* ─── Page Header ─── */
+    .page-header {
+      margin-bottom: 18px;
+    }
+
+    .page-header h1 {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .page-header p {
+      color: var(--text2);
+      font-size: 13px;
+      margin-top: 2px;
+    }
+
+    /* ─── Cards ─── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      box-shadow: var(--shadow);
+    }
+
+    .card+.card {
+      margin-top: 12px;
+    }
+
+    /* ─── Stats Row ─── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: var(--text3);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: 700;
+      margin-top: 4px;
+      letter-spacing: -0.03em;
+    }
+
+    .stat-value.accent {
+      color: var(--accent);
+    }
+
+    .stat-sub {
+      font-size: 12px;
+      color: var(--text3);
+      margin-top: 2px;
+    }
+
+    /* ─── Forms ─── */
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    .form-group:last-child {
+      margin-bottom: 0;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 5px;
+      color: var(--text2);
+    }
+
+    input[type="text"],
+    input[type="number"],
+    input[type="tel"],
+    input[type="email"],
+    select,
+    textarea {
+      width: 100%;
+      height: 42px;
+      padding: 0 12px;
+      background: var(--bg);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      transition: border-color var(--transition), box-shadow var(--transition);
+      outline: none;
+    }
+
+    textarea {
+      height: 72px;
+      padding: 10px 12px;
+      resize: vertical;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(232, 68, 30, .12);
+    }
+
+    input::placeholder,
+    textarea::placeholder {
+      color: var(--text3);
+    }
+
+    /* ─── Buttons ─── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      height: 42px;
+      padding: 0 16px;
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      font-weight: 500;
+      transition: all var(--transition);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      white-space: nowrap;
+    }
+
+    .btn:active {
+      transform: scale(0.97);
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: var(--primary-fg);
+    }
+
+    .btn-primary:hover {
+      opacity: 0.88;
+    }
+
+    .btn-accent {
+      background: var(--accent);
+      color: var(--accent-fg);
+    }
+
+    .btn-accent:hover {
+      opacity: 0.88;
+    }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--text);
+      border: 1.5px solid var(--border);
+    }
+
+    .btn-outline:hover {
+      background: var(--bg);
+    }
+
+    .btn-danger {
+      background: var(--danger);
+      color: #fff;
+    }
+
+    .btn-danger:hover {
+      opacity: 0.88;
+    }
+
+    .btn-success {
+      background: var(--success);
+      color: #fff;
+    }
+
+    .btn-sm {
+      height: 34px;
+      padding: 0 12px;
+      font-size: 13px;
+    }
+
+    .btn-full {
+      width: 100%;
+    }
+
+    .btn svg {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+    }
+
+    /* ─── Search Bar ─── */
+    .search-bar {
+      position: relative;
+      margin-bottom: 14px;
+    }
+
+    .search-bar input {
+      height: 42px;
+      padding-left: 38px;
+    }
+
+    .search-bar svg {
+      position: absolute;
+      left: 11px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 17px;
+      height: 17px;
+      color: var(--text3);
+      pointer-events: none;
+    }
+
+    /* ─── Tabs ─── */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 16px;
+      background: var(--bg);
+      border-radius: 8px;
+      padding: 3px;
+    }
+
+    .tab-btn {
+      flex: 1;
+      height: 34px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text2);
+      transition: all var(--transition);
+    }
+
+    .tab-btn.active {
+      background: var(--surface);
+      color: var(--text);
+      box-shadow: var(--shadow);
+    }
+
+    /* ─── Menu Item Card ─── */
+    .menu-item-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 8px;
+      transition: border-color var(--transition);
+    }
+
+    .menu-item-card:hover {
+      border-color: var(--accent);
+    }
+
+    .menu-item-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .menu-item-name {
+      font-weight: 500;
+      font-size: 14px;
+    }
+
+    .menu-item-category {
+      font-size: 12px;
+      color: var(--text3);
+      margin-top: 1px;
+    }
+
+    .menu-item-price {
+      font-weight: 600;
+      color: var(--accent);
+      font-size: 15px;
+      flex-shrink: 0;
+    }
+
+    .menu-item-actions {
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    /* ─── Billing Area ─── */
+    .menu-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .menu-tile {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px;
+      text-align: center;
+      cursor: pointer;
+      transition: all var(--transition);
+      position: relative;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .menu-tile:hover {
+      border-color: var(--accent);
+      box-shadow: var(--shadow-md);
+    }
+
+    .menu-tile.selected {
+      border-color: var(--accent);
+      background: rgba(232, 68, 30, .06);
+    }
+
+    .menu-tile-name {
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    .menu-tile-cat {
+      font-size: 11px;
+      color: var(--text3);
+      margin-bottom: 6px;
+    }
+
+    .menu-tile-price {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .menu-tile-badge {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      background: var(--accent);
+      color: #fff;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      font-size: 11px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ─── Order List ─── */
+    .order-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .order-header {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .order-header h3 {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .order-items {
+      max-height: 260px;
+      overflow-y: auto;
+    }
+
+    .order-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .order-item:last-child {
+      border-bottom: none;
+    }
+
+    .order-item-name {
+      flex: 1;
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .qty-ctrl {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .qty-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background var(--transition);
+    }
+
+    .qty-btn:hover {
+      background: var(--border);
+    }
+
+    .qty-val {
+      width: 28px;
+      text-align: center;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .order-item-total {
+      width: 62px;
+      text-align: right;
+      font-weight: 600;
+      font-size: 13px;
+    }
+
+    .order-item-del {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      color: var(--danger);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background var(--transition);
+    }
+
+    .order-item-del:hover {
+      background: rgba(220, 38, 38, .1);
+    }
+
+    .order-item-del svg {
+      width: 15px;
+      height: 15px;
+    }
+
+    /* ─── Order Totals ─── */
+    .order-totals {
+      padding: 14px;
+      border-top: 1px solid var(--border);
+    }
+
+    .total-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    .total-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .total-row.grand {
+      font-size: 17px;
+      font-weight: 700;
+      border-top: 1.5px solid var(--border);
+      padding-top: 10px;
+      margin-top: 6px;
+    }
+
+    .total-row label {
+      color: var(--text2);
+      margin-bottom: 0;
+      font-size: 14px;
+      font-weight: 400;
+    }
+
+    .discount-row,
+    .tax-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .discount-row input,
+    .tax-row input {
+      width: 80px;
+      height: 36px;
+      text-align: center;
+      padding: 0 8px;
+    }
+
+    .discount-row label,
+    .tax-row label {
+      flex: 1;
+      font-size: 13px;
+      color: var(--text2);
+      font-weight: 400;
+      margin-bottom: 0;
+    }
+
+    .discount-row span,
+    .tax-row span {
+      font-weight: 600;
+      min-width: 60px;
+      text-align: right;
+      font-size: 13px;
+    }
+
+    /* ─── Invoice Modal ─── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .6);
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      z-index: 200;
+      overflow-y: auto;
+      padding: 16px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity var(--transition);
+    }
+
+    .modal-overlay.open {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .modal {
+      background: var(--surface);
+      border-radius: 14px;
+      width: 100%;
+      max-width: 420px;
+      overflow: hidden;
+      box-shadow: var(--shadow-md);
+      transform: translateY(20px);
+      transition: transform var(--transition);
+    }
+
+    .modal-overlay.open .modal {
+      transform: none;
+    }
+
+    .modal-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .modal-header h2 {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .modal-body {
+      padding: 16px;
+    }
+
+    .modal-footer {
+      padding: 16px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 8px;
+    }
+
+    /* ─── Invoice Print View ─── */
+    .invoice-paper {
+      background: #fff;
+      color: #111;
+      font-family: 'Inter', sans-serif;
+      padding: 24px;
+      max-width: 420px;
+      margin: 0 auto;
+    }
+
+    .invoice-header {
+      text-align: center;
+      margin-bottom: 16px;
+    }
+
+    .invoice-logo {
+      width: 64px;
+      height: 64px;
+      border-radius: 8px;
+      object-fit: cover;
+      margin: 0 auto 8px;
+    }
+
+    .invoice-rname {
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .invoice-raddr {
+      font-size: 12px;
+      color: #555;
+      margin-top: 2px;
+    }
+
+    .invoice-divider {
+      border: none;
+      border-top: 1px dashed #ccc;
+      margin: 12px 0;
+    }
+
+    .invoice-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      margin-bottom: 12px;
+      color: #444;
+    }
+
+    .invoice-items-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .invoice-items-table th {
+      border-bottom: 1px solid #ddd;
+      padding: 6px 4px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 12px;
+      color: #555;
+    }
+
+    .invoice-items-table td {
+      padding: 6px 4px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    .invoice-items-table td:last-child,
+    .invoice-items-table th:last-child {
+      text-align: right;
+    }
+
+    .invoice-items-table td:nth-child(3),
+    .invoice-items-table th:nth-child(3) {
+      text-align: center;
+    }
+
+    .invoice-subtotals {
+      margin-top: 12px;
+    }
+
+    .invoice-subtot-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      margin-bottom: 4px;
+    }
+
+    .invoice-subtot-row.grand {
+      font-size: 16px;
+      font-weight: 700;
+      border-top: 1.5px solid #111;
+      padding-top: 8px;
+      margin-top: 4px;
+    }
+
+    .invoice-qr-section {
+      text-align: center;
+      margin-top: 16px;
+    }
+
+    .invoice-qr-section p {
+      font-size: 11px;
+      color: #888;
+      margin-top: 4px;
+    }
+
+    .invoice-qr-img {
+      width: 100px;
+      height: 100px;
+      margin: 0 auto;
+      object-fit: contain;
+    }
+
+    .invoice-thanks {
+      text-align: center;
+      margin-top: 16px;
+      font-size: 13px;
+      color: #555;
+      font-style: italic;
+    }
+
+    .invoice-scan-label {
+      font-size: 11px;
+      color: #888;
+      margin-top: 8px;
+    }
+
+    /* ─── Bill History ─── */
+    .bill-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: border-color var(--transition);
+    }
+
+    .bill-card:hover {
+      border-color: var(--accent);
+    }
+
+    .bill-card-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .bill-no {
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .bill-date {
+      font-size: 12px;
+      color: var(--text3);
+    }
+
+    .bill-items-count {
+      font-size: 12px;
+      color: var(--text2);
+      margin-top: 1px;
+    }
+
+    .bill-amount {
+      font-weight: 700;
+      font-size: 16px;
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+
+    /* ─── Category Filter ─── */
+    .cat-filter {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      margin-bottom: 12px;
+      scrollbar-width: none;
+    }
+
+    .cat-filter::-webkit-scrollbar {
+      display: none;
+    }
+
+    .cat-chip {
+      height: 30px;
+      padding: 0 12px;
+      border-radius: 20px;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text2);
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: all var(--transition);
+    }
+
+    .cat-chip.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    /* ─── Setup / Upload ─── */
+    .upload-area {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color var(--transition), background var(--transition);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .upload-area:hover {
+      border-color: var(--accent);
+      background: rgba(232, 68, 30, .04);
+    }
+
+    .upload-area input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .upload-preview {
+      max-height: 100px;
+      margin: 8px auto 0;
+      border-radius: 6px;
+      object-fit: contain;
+    }
+
+    .upload-text {
+      font-size: 13px;
+      color: var(--text2);
+    }
+
+    .upload-sub {
+      font-size: 11px;
+      color: var(--text3);
+      margin-top: 2px;
+    }
+
+    /* ─── Empty State ─── */
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text3);
+    }
+
+    .empty-state svg {
+      width: 48px;
+      height: 48px;
+      margin: 0 auto 12px;
+      opacity: 0.4;
+    }
+
+    .empty-state p {
+      font-size: 14px;
+    }
+
+    /* ─── Toast ─── */
+    #toast-container {
+      position: fixed;
+      top: 70px;
+      right: 16px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .toast {
+      background: var(--text);
+      color: var(--bg);
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      box-shadow: var(--shadow-md);
+      animation: toastIn 250ms ease forwards;
+      pointer-events: all;
+    }
+
+    .toast.success {
+      background: var(--success);
+      color: #fff;
+    }
+
+    .toast.danger {
+      background: var(--danger);
+      color: #fff;
+    }
+
+    @keyframes toastIn {
+      from {
+        opacity: 0;
+        transform: translateX(20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: none;
+      }
+    }
+
+    @keyframes toastOut {
+      to {
+        opacity: 0;
+        transform: translateX(20px);
+        height: 0;
+        padding: 0;
+        margin: 0;
+      }
+    }
+
+    /* ─── Dialog ─── */
+    .dialog-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 300;
+      padding: 16px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity var(--transition);
+    }
+
+    .dialog-overlay.open {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .dialog {
+      background: var(--surface);
+      border-radius: 14px;
+      padding: 24px;
+      max-width: 340px;
+      width: 100%;
+      box-shadow: var(--shadow-md);
+    }
+
+    .dialog h3 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .dialog p {
+      font-size: 14px;
+      color: var(--text2);
+      margin-bottom: 20px;
+    }
+
+    .dialog-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    /* ─── Print Styles ─── */
+    @media print {
+      body * {
+        visibility: hidden !important;
+      }
+
+      #print-area,
+      #print-area * {
+        visibility: visible !important;
+      }
+
+      #print-area {
+        position: fixed;
+        inset: 0;
+        background: #fff;
+      }
+
+      .invoice-paper {
+        max-width: 100%;
+        padding: 20px;
+      }
+    }
+
+    /* ─── Responsive ─── */
+    @media (min-width: 480px) {
+      .stats-grid {
+        grid-template-columns: repeat(4, 1fr);
+      }
+
+      .menu-grid {
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      }
+    }
+
+    /* ─── Misc Helpers ─── */
+    .flex-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .flex-between {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .section-label {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--text3);
+      margin-bottom: 10px;
+    }
+
+    .gap-8 {
+      gap: 8px;
+    }
+
+    .mt-12 {
+      margin-top: 12px;
+    }
+
+    .mt-16 {
+      margin-top: 16px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 20px;
+      padding: 0 7px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      background: var(--bg);
+      color: var(--text2);
+      border: 1px solid var(--border);
+    }
+
+    .badge.accent {
+      background: rgba(232, 68, 30, .12);
+      color: var(--accent);
+      border-color: transparent;
+    }
+
+    /* ─── Recent Bills ─── */
+    .recent-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    /* Scan invoice page */
+    #scan-invoice-section {
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app">
+
+    <!-- ─── Top Bar ─── -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <div class="topbar-logo" id="topbar-logo-wrap">
+          <span id="topbar-logo-letter">R</span>
+        </div>
+        <span class="topbar-name" id="topbar-name">Restaurant</span>
+      </div>
+      <div class="topbar-right">
+        <button class="btn-icon" onclick="toggleTheme()" title="Toggle dark mode" aria-label="Toggle theme">
+          <svg id="theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5" />
+            <path
+              d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+          </svg>
+          <svg id="theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            style="display:none">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- ─── Main ─── -->
+    <main class="main">
+
+      <!-- SCAN INVOICE (shown when URL has ?inv=xxx) -->
+      <section id="scan-invoice-section" class="section">
+        <div class="page-header">
+          <h1>Your Bill</h1>
+          <p>Scanned invoice receipt</p>
+        </div>
+        <div id="scan-invoice-content"></div>
+      </section>
+
+      <!-- DASHBOARD -->
+      <section id="section-dashboard" class="section active">
+        <div class="page-header">
+          <h1>Dashboard</h1>
+          <p id="dash-date"></p>
+        </div>
+        <div class="stats-grid" id="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Today's Revenue</div>
+            <div class="stat-value accent" id="stat-today-rev">-</div>
+            <div class="stat-sub" id="stat-today-bills">0 bills</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Total Revenue</div>
+            <div class="stat-value" id="stat-total-rev">-</div>
+            <div class="stat-sub" id="stat-total-bills">All time</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Menu Items</div>
+            <div class="stat-value" id="stat-menu-count">0</div>
+            <div class="stat-sub" id="stat-cat-count">0 categories</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Total Bills</div>
+            <div class="stat-value" id="stat-bill-count">0</div>
+            <div class="stat-sub">Generated</div>
+          </div>
+        </div>
+        <div class="section-label">Recent Bills</div>
+        <div id="recent-bills-list" class="recent-list"></div>
+      </section>
+
+      <!-- BILLING -->
+      <section id="section-billing" class="section">
+        <div class="page-header">
+          <h1>New Bill</h1>
+          <p>Select items to add to order</p>
+        </div>
+
+        <!-- Category filter -->
+        <div class="cat-filter" id="billing-cat-filter"></div>
+
+        <!-- Menu search -->
+        <div class="search-bar" style="margin-bottom:12px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.35-4.35" />
+          </svg>
+          <input type="text" id="billing-search" placeholder="Search menu..." oninput="renderMenuTiles()">
+        </div>
+
+        <!-- Menu tiles -->
+        <div class="menu-grid" id="menu-tiles"></div>
+
+        <!-- Order -->
+        <div class="order-section" id="order-section">
+          <div class="order-header">
+            <h3>Current Order</h3>
+            <button class="btn btn-sm btn-outline" onclick="clearOrder()" style="height:30px">Clear</button>
+          </div>
+          <div class="order-items" id="order-items-list">
+            <div class="empty-state" style="padding:20px">
+              <p>No items added yet</p>
+            </div>
+          </div>
+          <div class="order-totals">
+            <div class="total-row">
+              <span>Subtotal</span>
+              <span id="order-subtotal">₹0.00</span>
+            </div>
+            <div class="discount-row">
+              <label>Discount (%)</label>
+              <input type="number" id="discount-input" value="0" min="0" max="100" oninput="recalcTotals()"
+                style="width:70px;height:34px">
+              <span id="discount-amount" style="color:var(--success)">-₹0.00</span>
+            </div>
+            <div class="tax-row">
+              <label>Tax (%)</label>
+              <input type="number" id="tax-input" value="5" min="0" max="100" oninput="recalcTotals()"
+                style="width:70px;height:34px">
+              <span id="tax-amount">+₹0.00</span>
+            </div>
+            <div class="total-row grand">
+              <span>Grand Total</span>
+              <span id="order-total">₹0.00</span>
+            </div>
+            <div class="mt-12">
+              <button class="btn btn-accent btn-full" onclick="generateBill()" id="gen-bill-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                  <line x1="16" y1="13" x2="8" y2="13" />
+                  <line x1="16" y1="17" x2="8" y2="17" />
+                  <polyline points="10 9 9 9 8 9" />
+                </svg>
+                Generate Bill
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- MENU MANAGEMENT -->
+      <section id="section-menu" class="section">
+        <div class="flex-between" style="margin-bottom:16px">
+          <div>
+            <h1 style="font-size:22px;font-weight:700;letter-spacing:-0.02em">Menu</h1>
+            <p style="font-size:13px;color:var(--text2);margin-top:2px">Manage your menu items</p>
+          </div>
+          <button class="btn btn-accent btn-sm" onclick="openMenuForm()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Add Item
+          </button>
+        </div>
+
+        <!-- Add/Edit Form -->
+        <div class="card" id="menu-form-card" style="display:none;margin-bottom:14px">
+          <h3 style="font-size:15px;font-weight:600;margin-bottom:14px" id="menu-form-title">Add Menu Item</h3>
+          <div class="form-group">
+            <label>Item Name *</label>
+            <input type="text" id="item-name" placeholder="e.g. Butter Chicken" maxlength="60">
+          </div>
+          <div class="flex-row" style="gap:10px">
+            <div class="form-group" style="flex:1">
+              <label>Price (₹) *</label>
+              <input type="number" id="item-price" placeholder="0.00" min="0" step="0.01">
+            </div>
+            <div class="form-group" style="flex:1">
+              <label>Category</label>
+              <input type="text" id="item-category" placeholder="e.g. Main Course" list="categories-list"
+                maxlength="40">
+              <datalist id="categories-list"></datalist>
+            </div>
+          </div>
+          <div class="flex-row mt-12">
+            <button class="btn btn-accent" onclick="saveMenuItem()" id="save-item-btn">Save Item</button>
+            <button class="btn btn-outline" onclick="cancelMenuForm()">Cancel</button>
+          </div>
+        </div>
+
+        <!-- Search & Filter -->
+        <div class="search-bar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.35-4.35" />
+          </svg>
+          <input type="text" id="menu-search" placeholder="Search items..." oninput="renderMenuList()">
+        </div>
+
+        <!-- Menu list -->
+        <div id="menu-list"></div>
+      </section>
+
+      <!-- HISTORY -->
+      <section id="section-history" class="section">
+        <div class="page-header">
+          <h1>Sales History</h1>
+          <p>All generated bills</p>
+        </div>
+        <div class="search-bar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.35-4.35" />
+          </svg>
+          <input type="text" id="history-search" placeholder="Search by invoice number..." oninput="renderHistory()">
+        </div>
+        <div id="history-list"></div>
+      </section>
+
+      <!-- SETUP -->
+      <section id="section-setup" class="section">
+        <div class="page-header">
+          <h1>Setup</h1>
+          <p>Configure your restaurant details</p>
+        </div>
+
+        <div class="card">
+          <div class="section-label" style="margin-bottom:14px">Restaurant Info</div>
+          <div class="form-group">
+            <label>Restaurant Name *</label>
+            <input type="text" id="setup-name" placeholder="Your Restaurant Name" maxlength="60">
+          </div>
+          <div class="form-group">
+            <label>Address</label>
+            <textarea id="setup-address" placeholder="Full address of your restaurant" rows="2"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Mobile Number</label>
+            <input type="tel" id="setup-phone" placeholder="+91 98765 43210" maxlength="20">
+          </div>
+          <div class="form-group">
+            <label>GSTIN (optional)</label>
+            <input type="text" id="setup-gstin" placeholder="22AAAAA0000A1Z5" maxlength="20">
+          </div>
+          <div class="form-group">
+            <label>Thank You Message</label>
+            <input type="text" id="setup-thanks" placeholder="Thank you for dining with us!" maxlength="100">
+          </div>
+        </div>
+
+        <div class="card mt-12">
+          <div class="section-label" style="margin-bottom:14px">Branding</div>
+          <div class="form-group">
+            <label>Restaurant Logo</label>
+            <div class="upload-area" id="logo-upload-area">
+              <input type="file" accept="image/*" onchange="handleLogoUpload(event)" id="logo-file-input">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                style="width:32px;height:32px;margin:0 auto 6px;color:var(--text3)">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                <circle cx="8.5" cy="8.5" r="1.5" />
+                <polyline points="21 15 16 10 5 21" />
+              </svg>
+              <p class="upload-text">Tap to upload logo</p>
+              <p class="upload-sub">PNG, JPG up to 5MB</p>
+              <img id="logo-preview" class="upload-preview" style="display:none" alt="Logo preview">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>UPI QR Code (for payments)</label>
+            <div class="upload-area" id="upi-upload-area">
+              <input type="file" accept="image/*" onchange="handleUpiUpload(event)" id="upi-file-input">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                style="width:32px;height:32px;margin:0 auto 6px;color:var(--text3)">
+                <rect x="3" y="3" width="7" height="7" />
+                <rect x="14" y="3" width="7" height="7" />
+                <rect x="3" y="14" width="7" height="7" />
+                <rect x="14" y="14" width="7" height="7" />
+              </svg>
+              <p class="upload-text">Tap to upload UPI QR code</p>
+              <p class="upload-sub">PNG, JPG up to 5MB</p>
+              <img id="upi-preview" class="upload-preview" style="display:none" alt="UPI QR preview">
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-16">
+          <button class="btn btn-accent btn-full" onclick="saveSetup()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+              <polyline points="17 21 17 13 7 13 7 21" />
+              <polyline points="7 3 7 8 15 8" />
+            </svg>
+            Save Settings
+          </button>
+          <button class="btn btn-outline btn-full" onclick="confirmClearData()"
+            style="margin-top:8px;color:var(--danger);border-color:var(--danger)">
+            Clear All Data
+          </button>
+        </div>
+      </section>
+
+    </main><!-- /main -->
+
+    <!-- ─── Bottom Navigation ─── -->
+    <nav class="bottom-nav">
+      <button class="nav-item active" onclick="navigate('dashboard')" id="nav-dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7" />
+          <rect x="14" y="3" width="7" height="7" />
+          <rect x="14" y="14" width="7" height="7" />
+          <rect x="3" y="14" width="7" height="7" />
+        </svg>
+        <span>Dashboard</span>
+      </button>
+      <button class="nav-item" onclick="navigate('billing')" id="nav-billing">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="9" cy="21" r="1" />
+          <circle cx="20" cy="21" r="1" />
+          <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+        </svg>
+        <span>Billing</span>
+      </button>
+      <button class="nav-item" onclick="navigate('menu')" id="nav-menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="8" y1="6" x2="21" y2="6" />
+          <line x1="8" y1="12" x2="21" y2="12" />
+          <line x1="8" y1="18" x2="21" y2="18" />
+          <line x1="3" y1="6" x2="3.01" y2="6" />
+          <line x1="3" y1="12" x2="3.01" y2="12" />
+          <line x1="3" y1="18" x2="3.01" y2="18" />
+        </svg>
+        <span>Menu</span>
+      </button>
+      <button class="nav-item" onclick="navigate('history')" id="nav-history">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="12 8 12 12 14 14" />
+          <path d="M3.05 11a9 9 0 1 1 .5 4" />
+          <polyline points="3 16 3 11 8 11" />
+        </svg>
+        <span>History</span>
+      </button>
+      <button class="nav-item" onclick="navigate('setup')" id="nav-setup">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3" />
+          <path
+            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+        </svg>
+        <span>Setup</span>
+      </button>
+    </nav>
+
+  </div><!-- /#app -->
+
+  <!-- Invoice Modal -->
+  <div class="modal-overlay" id="invoice-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Invoice Generated</h2>
+        <button class="btn-icon" onclick="closeInvoiceModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body" id="invoice-preview-body" style="overflow-y:auto;max-height:70vh"></div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="printBill()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 6 2 18 2 18 9" />
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+            <rect x="6" y="14" width="12" height="8" />
+          </svg>
+          Print
+        </button>
+        <button class="btn btn-primary" onclick="downloadPDF()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+          Download PDF
+        </button>
+        <button class="btn btn-accent" onclick="closeInvoiceModal();clearOrder()">New Bill</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- View Bill Modal (History) -->
+  <div class="modal-overlay" id="view-bill-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="view-bill-modal-title">Bill Details</h2>
+        <button class="btn-icon" onclick="closeViewBillModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body" id="view-bill-body" style="overflow-y:auto;max-height:70vh"></div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="printViewedBill()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 6 2 18 2 18 9" />
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+            <rect x="6" y="14" width="12" height="8" />
+          </svg>
+          Print
+        </button>
+        <button class="btn btn-primary" onclick="downloadViewedPDF()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+          Download PDF
+        </button>
+        <button class="btn btn-danger btn-sm" onclick="deleteViewedBill()" style="margin-left:auto">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirm Dialog -->
+  <div class="dialog-overlay" id="confirm-dialog">
+    <div class="dialog">
+      <h3 id="confirm-title">Are you sure?</h3>
+      <p id="confirm-message">This action cannot be undone.</p>
+      <div class="dialog-actions">
+        <button class="btn btn-outline" onclick="closeConfirmDialog()">Cancel</button>
+        <button class="btn btn-danger" id="confirm-ok-btn" onclick="confirmOk()">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast container -->
+  <div id="toast-container"></div>
+
+  <!-- Hidden print area -->
+  <div id="print-area" style="display:none"></div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════════
+     APPLICATION JAVASCRIPT
+     ══════════════════════════════════════════════════════════════════════════ -->
+  <script>
+    /* ────────────────────────────────
+       LocalStorage Keys
+       ──────────────────────────────── */
+    const LS = {
+      SETUP: 'rbs_setup',
+      MENU: 'rbs_menu',
+      BILLS: 'rbs_bills',
+      THEME: 'rbs_theme',
+    };
+
+    /* ────────────────────────────────
+       App State
+       ──────────────────────────────── */
+    let currentOrder = [];    // { menuItem, qty }
+    let menu = [];            // { id, name, price, category }
+    let bills = [];           // saved bills
+    let setup = {};           // restaurant setup
+    let editingMenuId = null; // ID of item being edited
+    let activeBillingCat = 'All';
+    let currentBillForView = null;  // bill shown in view-bill modal
+    let confirmCallback = null;
+
+    /* ────────────────────────────────
+       Initialise
+       ──────────────────────────────── */
+    function init() {
+      // Load persisted data
+      setup = JSON.parse(localStorage.getItem(LS.SETUP) || '{}');
+      menu = JSON.parse(localStorage.getItem(LS.MENU) || '[]');
+      bills = JSON.parse(localStorage.getItem(LS.BILLS) || '[]');
+
+      // Theme
+      const savedTheme = localStorage.getItem(LS.THEME) || 'light';
+      applyTheme(savedTheme);
+
+      // Topbar
+      updateTopbar();
+
+      // Fill setup form
+      fillSetupForm();
+
+      // Check if URL contains ?inv= for scanned invoice
+      const params = new URLSearchParams(window.location.search);
+      const invId = params.get('inv');
+      if (invId) {
+        showScannedInvoice(invId);
+        return;
+      }
+
+      // Render initial section
+      renderDashboard();
+      renderMenuTiles();
+      renderMenuList();
+      renderHistory();
+
+      // Set today's date on dashboard
+      const now = new Date();
+      document.getElementById('dash-date').textContent = now.toLocaleDateString('en-IN', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+      });
+    }
+
+    /* ────────────────────────────────
+       Theme
+       ──────────────────────────────── */
+    function toggleTheme() {
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      applyTheme(isDark ? 'light' : 'dark');
+    }
+    function applyTheme(t) {
+      document.documentElement.setAttribute('data-theme', t);
+      localStorage.setItem(LS.THEME, t);
+      document.getElementById('theme-icon-sun').style.display = t === 'dark' ? 'block' : 'none';
+      document.getElementById('theme-icon-moon').style.display = t === 'light' ? 'block' : 'none';
+    }
+
+    /* ────────────────────────────────
+       Navigation
+       ──────────────────────────────── */
+    function navigate(section) {
+      // Hide all sections
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      // Deactivate all nav items
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      // Show target
+      document.getElementById('section-' + section).classList.add('active');
+      document.getElementById('nav-' + section).classList.add('active');
+      // Refresh data when switching
+      if (section === 'dashboard') renderDashboard();
+      if (section === 'billing') renderMenuTiles();
+      if (section === 'menu') renderMenuList();
+      if (section === 'history') renderHistory();
+      window.scrollTo(0, 0);
+    }
+
+    /* ────────────────────────────────
+       Topbar update
+       ──────────────────────────────── */
+    function updateTopbar() {
+      const name = setup.name || 'Restaurant';
+      document.getElementById('topbar-name').textContent = name;
+      document.getElementById('topbar-logo-letter').textContent = name.charAt(0).toUpperCase();
+      const logoWrap = document.getElementById('topbar-logo-wrap');
+      const existing = logoWrap.querySelector('img');
+      if (existing) existing.remove();
+      if (setup.logo) {
+        const img = document.createElement('img');
+        img.src = setup.logo;
+        img.alt = 'Logo';
+        logoWrap.innerHTML = '';
+        logoWrap.appendChild(img);
+      } else {
+        logoWrap.innerHTML = `<span>${name.charAt(0).toUpperCase()}</span>`;
+      }
+    }
+
+    /* ────────────────────────────────
+       DASHBOARD
+       ──────────────────────────────── */
+    function renderDashboard() {
+      const today = new Date().toDateString();
+      const todayBills = bills.filter(b => new Date(b.date).toDateString() === today);
+      const todayRev = todayBills.reduce((s, b) => s + b.total, 0);
+      const totalRev = bills.reduce((s, b) => s + b.total, 0);
+      const cats = [...new Set(menu.map(m => m.category).filter(Boolean))];
+
+      document.getElementById('stat-today-rev').textContent = fmt(todayRev);
+      document.getElementById('stat-today-bills').textContent = `${todayBills.length} bills today`;
+      document.getElementById('stat-total-rev').textContent = fmt(totalRev);
+      document.getElementById('stat-total-bills').textContent = `${bills.length} total`;
+      document.getElementById('stat-menu-count').textContent = menu.length;
+      document.getElementById('stat-cat-count').textContent = `${cats.length} categories`;
+      document.getElementById('stat-bill-count').textContent = bills.length;
+
+      // Recent bills (last 5)
+      const recent = [...bills].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
+      const container = document.getElementById('recent-bills-list');
+      if (!recent.length) {
+        container.innerHTML = `<div class="empty-state">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+      </svg>
+      <p>No bills generated yet</p>
+    </div>`;
+        return;
+      }
+      container.innerHTML = recent.map(b => `
+    <div class="bill-card" onclick="openViewBill('${b.id}')">
+      <div class="bill-card-info">
+        <div class="bill-no">${b.invoiceNo}</div>
+        <div class="bill-date">${fmtDate(b.date)}</div>
+        <div class="bill-items-count">${b.items.length} item${b.items.length > 1 ? 's' : ''}</div>
+      </div>
+      <div class="bill-amount">${fmt(b.total)}</div>
+    </div>
+  `).join('');
+    }
+
+    /* ────────────────────────────────
+       BILLING — Menu Tiles
+       ──────────────────────────────── */
+    function renderMenuTiles() {
+      const q = (document.getElementById('billing-search')?.value || '').toLowerCase();
+      const cats = ['All', ...[...new Set(menu.map(m => m.category).filter(Boolean))]];
+
+      // Category chips
+      const catEl = document.getElementById('billing-cat-filter');
+      catEl.innerHTML = cats.map(c => `
+    <button class="cat-chip ${c === activeBillingCat ? 'active' : ''}"
+      onclick="activeBillingCat='${c}';renderMenuTiles()">
+      ${c}
+    </button>
+  `).join('');
+
+      // Filter menu items
+      let filtered = menu.filter(m => {
+        const matchQ = !q || m.name.toLowerCase().includes(q) || (m.category || '').toLowerCase().includes(q);
+        const matchC = activeBillingCat === 'All' || m.category === activeBillingCat;
+        return matchQ && matchC;
+      });
+
+      const grid = document.getElementById('menu-tiles');
+      if (!filtered.length) {
+        if (!menu.length) {
+          grid.innerHTML = `<div style="grid-column:1/-1">
+        <div class="empty-state">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:48px;height:48px;margin:0 auto 12px;opacity:.4">
+            <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
+            <line x1="8" y1="18" x2="21" y2="18"/>
+          </svg>
+          <p>No menu items yet. Go to Menu to add some.</p>
+        </div>
+      </div>`;
+        } else {
+          grid.innerHTML = `<div style="grid-column:1/-1"><div class="empty-state"><p>No items match your search</p></div></div>`;
+        }
+        return;
+      }
+
+      grid.innerHTML = filtered.map(m => {
+        const inOrder = currentOrder.find(o => o.menuItem.id === m.id);
+        return `
+      <div class="menu-tile ${inOrder ? 'selected' : ''}" onclick="addToOrder('${m.id}')">
+        ${inOrder ? `<div class="menu-tile-badge">${inOrder.qty}</div>` : ''}
+        <div class="menu-tile-name">${esc(m.name)}</div>
+        ${m.category ? `<div class="menu-tile-cat">${esc(m.category)}</div>` : ''}
+        <div class="menu-tile-price">${fmt(m.price)}</div>
+      </div>`;
+      }).join('');
+    }
+
+    /* Add item to order */
+    function addToOrder(id) {
+      const item = menu.find(m => m.id === id);
+      if (!item) return;
+      const existing = currentOrder.find(o => o.menuItem.id === id);
+      if (existing) {
+        existing.qty++;
+      } else {
+        currentOrder.push({ menuItem: item, qty: 1 });
+      }
+      renderOrderList();
+      renderMenuTiles();
+    }
+
+    /* Increase/decrease qty */
+    function changeQty(id, delta) {
+      const idx = currentOrder.findIndex(o => o.menuItem.id === id);
+      if (idx < 0) return;
+      currentOrder[idx].qty += delta;
+      if (currentOrder[idx].qty <= 0) {
+        currentOrder.splice(idx, 1);
+      }
+      renderOrderList();
+      renderMenuTiles();
+    }
+
+    /* Remove order item */
+    function removeOrderItem(id) {
+      currentOrder = currentOrder.filter(o => o.menuItem.id !== id);
+      renderOrderList();
+      renderMenuTiles();
+    }
+
+    /* Clear order */
+    function clearOrder() {
+      currentOrder = [];
+      document.getElementById('discount-input').value = '0';
+      document.getElementById('tax-input').value = '5';
+      renderOrderList();
+      renderMenuTiles();
+    }
+
+    /* Render order list */
+    function renderOrderList() {
+      const list = document.getElementById('order-items-list');
+      if (!currentOrder.length) {
+        list.innerHTML = `<div class="empty-state" style="padding:20px"><p>No items added yet</p></div>`;
+        recalcTotals();
+        return;
+      }
+      list.innerHTML = currentOrder.map(o => `
+    <div class="order-item">
+      <div class="order-item-name">${esc(o.menuItem.name)}</div>
+      <div class="qty-ctrl">
+        <button class="qty-btn" onclick="changeQty('${o.menuItem.id}', -1)">-</button>
+        <div class="qty-val">${o.qty}</div>
+        <button class="qty-btn" onclick="changeQty('${o.menuItem.id}', 1)">+</button>
+      </div>
+      <div class="order-item-total">${fmt(o.menuItem.price * o.qty)}</div>
+      <button class="order-item-del" onclick="removeOrderItem('${o.menuItem.id}')" title="Remove">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
+          <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+        </svg>
+      </button>
+    </div>
+  `).join('');
+      recalcTotals();
+    }
+
+    /* Recalculate totals */
+    function recalcTotals() {
+      const subtotal = currentOrder.reduce((s, o) => s + o.menuItem.price * o.qty, 0);
+      const disc = Math.max(0, Math.min(100, parseFloat(document.getElementById('discount-input')?.value) || 0));
+      const tax = Math.max(0, Math.min(100, parseFloat(document.getElementById('tax-input')?.value) || 0));
+      const discAmt = subtotal * disc / 100;
+      const taxAmt = (subtotal - discAmt) * tax / 100;
+      const total = subtotal - discAmt + taxAmt;
+      document.getElementById('order-subtotal').textContent = fmt(subtotal);
+      document.getElementById('discount-amount').textContent = '-' + fmt(discAmt);
+      document.getElementById('tax-amount').textContent = '+' + fmt(taxAmt);
+      document.getElementById('order-total').textContent = fmt(total);
+    }
+
+    /* ────────────────────────────────
+       Generate Bill
+       ──────────────────────────────── */
+    function generateBill() {
+      if (!currentOrder.length) { showToast('Add at least one item', 'danger'); return; }
+
+      const subtotal = currentOrder.reduce((s, o) => s + o.menuItem.price * o.qty, 0);
+      const disc = parseFloat(document.getElementById('discount-input').value) || 0;
+      const tax = parseFloat(document.getElementById('tax-input').value) || 5;
+      const discAmt = subtotal * disc / 100;
+      const taxAmt = (subtotal - discAmt) * tax / 100;
+      const total = subtotal - discAmt + taxAmt;
+      const invoiceNo = 'INV-' + String(bills.length + 1).padStart(4, '0');
+      const bill = {
+        id: uid(),
+        invoiceNo,
+        date: new Date().toISOString(),
+        items: currentOrder.map(o => ({ id: o.menuItem.id, name: o.menuItem.name, price: o.menuItem.price, qty: o.qty })),
+        subtotal,
+        discount: disc,
+        discountAmt: discAmt,
+        tax,
+        taxAmt,
+        total,
+        restaurantName: setup.name || 'Restaurant',
+        restaurantAddress: setup.address || '',
+        restaurantPhone: setup.phone || '',
+        restaurantGST: setup.gstin || '',
+        restaurantThanks: setup.thanks || 'Thank you for dining with us!',
+        restaurantLogo: setup.logo || null,
+        restaurantUPI: setup.upi || null,
+      };
+      bills.push(bill);
+      saveBills();
+
+      // Show invoice modal
+      showInvoiceModal(bill);
+      showToast('Bill generated! ' + invoiceNo, 'success');
+    }
+
+    /* ────────────────────────────────
+       Invoice HTML builder
+       ──────────────────────────────── */
+    function buildInvoiceHTML(bill) {
+      const scanURL = `${window.location.origin}${window.location.pathname}?inv=${bill.id}`;
+      const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(scanURL)}`;
+      return `
+    <div class="invoice-paper" id="invoice-paper-${bill.id}">
+      <div class="invoice-header">
+        ${bill.restaurantLogo ? `<img class="invoice-logo" src="${bill.restaurantLogo}" alt="Logo">` : ''}
+        <div class="invoice-rname">${esc(bill.restaurantName)}</div>
+        ${bill.restaurantAddress ? `<div class="invoice-raddr">${esc(bill.restaurantAddress)}</div>` : ''}
+        ${bill.restaurantPhone ? `<div class="invoice-raddr">Tel: ${esc(bill.restaurantPhone)}</div>` : ''}
+        ${bill.restaurantGST ? `<div class="invoice-raddr">GSTIN: ${esc(bill.restaurantGST)}</div>` : ''}
+      </div>
+      <hr class="invoice-divider">
+      <div class="invoice-meta">
+        <span><strong>Invoice:</strong> ${esc(bill.invoiceNo)}</span>
+        <span>${fmtDate(bill.date)}</span>
+      </div>
+      <table class="invoice-items-table">
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th style="text-align:right">Rate</th>
+            <th style="text-align:center">Qty</th>
+            <th style="text-align:right">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${bill.items.map(it => `
+            <tr>
+              <td>${esc(it.name)}</td>
+              <td style="text-align:right">${fmt(it.price)}</td>
+              <td style="text-align:center">${it.qty}</td>
+              <td style="text-align:right">${fmt(it.price * it.qty)}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+      <div class="invoice-subtotals">
+        <div class="invoice-subtot-row"><span>Subtotal</span><span>${fmt(bill.subtotal)}</span></div>
+        ${bill.discount > 0 ? `<div class="invoice-subtot-row"><span>Discount (${bill.discount}%)</span><span style="color:#16a34a">-${fmt(bill.discountAmt)}</span></div>` : ''}
+        ${bill.tax > 0 ? `<div class="invoice-subtot-row"><span>Tax (${bill.tax}%)</span><span>+${fmt(bill.taxAmt)}</span></div>` : ''}
+        <div class="invoice-subtot-row grand"><span>TOTAL</span><span>${fmt(bill.total)}</span></div>
+      </div>
+      ${bill.restaurantUPI ? `
+        <div class="invoice-qr-section" style="margin-top:16px">
+          <p style="font-size:12px;font-weight:600;color:#333;margin-bottom:6px">Scan to Pay (UPI)</p>
+          <img src="${bill.restaurantUPI}" class="invoice-qr-img" alt="UPI QR">
+        </div>
+      ` : ''}
+      <div class="invoice-qr-section" style="margin-top:12px">
+        <p style="font-size:11px;color:#999;margin-bottom:6px">Scan to view this bill digitally</p>
+        <img src="${qrSrc}" class="invoice-qr-img" alt="Bill QR" crossorigin="anonymous">
+        <p class="invoice-scan-label">${esc(bill.invoiceNo)}</p>
+      </div>
+      <div class="invoice-thanks">${esc(bill.restaurantThanks)}</div>
+    </div>`;
+    }
+
+    /* ────────────────────────────────
+       Invoice Modal
+       ──────────────────────────────── */
+    function showInvoiceModal(bill) {
+      document.getElementById('invoice-preview-body').innerHTML = buildInvoiceHTML(bill);
+      document.getElementById('invoice-modal').classList.add('open');
+      // Store reference to current bill for print/pdf
+      window._activeBill = bill;
+    }
+    function closeInvoiceModal() {
+      document.getElementById('invoice-modal').classList.remove('open');
+    }
+
+    /* Print */
+    function printBill() {
+      const html = document.getElementById('invoice-preview-body').innerHTML;
+      const printArea = document.getElementById('print-area');
+      printArea.innerHTML = html;
+      printArea.style.display = 'block';
+      window.print();
+      printArea.style.display = 'none';
+      printArea.innerHTML = '';
+    }
+
+    /* Download PDF */
+    function downloadPDF() {
+      if (typeof window.jspdf === 'undefined' && typeof jsPDF === 'undefined') {
+        showToast('PDF library not loaded. Try again.', 'danger');
+        return;
+      }
+      generatePDFForBill(window._activeBill);
+    }
+
+    function generatePDFForBill(bill) {
+      const { jsPDF } = window.jspdf || { jsPDF };
+      const doc = new jsPDF({ unit: 'mm', format: 'a5' });
+      const w = doc.internal.pageSize.getWidth();
+      let y = 15;
+
+      // Header
+      if (bill.restaurantLogo) {
+        try { doc.addImage(bill.restaurantLogo, 'JPEG', (w - 20) / 2, y, 20, 20, '', 'FAST'); y += 24; } catch (e) { }
+      }
+      doc.setFontSize(16); doc.setFont('helvetica', 'bold');
+      doc.text(bill.restaurantName, w / 2, y, { align: 'center' }); y += 6;
+      doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+      if (bill.restaurantAddress) { doc.text(bill.restaurantAddress, w / 2, y, { align: 'center' }); y += 5; }
+      if (bill.restaurantPhone) { doc.text('Tel: ' + bill.restaurantPhone, w / 2, y, { align: 'center' }); y += 5; }
+
+      // Divider
+      doc.setDrawColor(200); doc.setLineDash([2, 2]);
+      doc.line(10, y, w - 10, y); y += 5; doc.setLineDash([]);
+
+      // Meta
+      doc.setFontSize(9);
+      doc.text('Invoice: ' + bill.invoiceNo, 10, y);
+      doc.text(fmtDate(bill.date), w - 10, y, { align: 'right' }); y += 8;
+
+      // Items table header
+      doc.setFillColor(240, 240, 240); doc.rect(10, y - 4, w - 20, 7, 'F');
+      doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+      doc.text('Item', 12, y);
+      doc.text('Rate', w - 42, y, { align: 'right' });
+      doc.text('Qty', w - 28, y, { align: 'center' });
+      doc.text('Amount', w - 10, y, { align: 'right' });
+      y += 6;
+
+      // Items
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+      bill.items.forEach(it => {
+        doc.text(it.name.substring(0, 30), 12, y);
+        doc.text(fmt(it.price), w - 42, y, { align: 'right' });
+        doc.text(String(it.qty), w - 28, y, { align: 'center' });
+        doc.text(fmt(it.price * it.qty), w - 10, y, { align: 'right' });
+        y += 6;
+      });
+
+      // Totals
+      doc.setDrawColor(180); doc.line(10, y, w - 10, y); y += 5;
+      doc.text('Subtotal:', w - 42, y); doc.text(fmt(bill.subtotal), w - 10, y, { align: 'right' }); y += 5;
+      if (bill.discount > 0) {
+        doc.setTextColor(22, 163, 74);
+        doc.text(`Discount (${bill.discount}%):`, w - 42, y); doc.text('-' + fmt(bill.discountAmt), w - 10, y, { align: 'right' }); y += 5;
+        doc.setTextColor(0);
+      }
+      if (bill.tax > 0) {
+        doc.text(`Tax (${bill.tax}%):`, w - 42, y); doc.text('+' + fmt(bill.taxAmt), w - 10, y, { align: 'right' }); y += 5;
+      }
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(12);
+      doc.text('TOTAL:', w - 42, y); doc.text(fmt(bill.total), w - 10, y, { align: 'right' }); y += 10;
+
+      // UPI QR
+      if (bill.restaurantUPI) {
+        try {
+          doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+          doc.text('Scan to Pay (UPI)', w / 2, y, { align: 'center' }); y += 4;
+          doc.addImage(bill.restaurantUPI, 'JPEG', (w - 28) / 2, y, 28, 28, '', 'FAST'); y += 32;
+        } catch (e) { }
+      }
+
+      // Thanks
+      doc.setFont('helvetica', 'italic'); doc.setFontSize(9); doc.setTextColor(100);
+      doc.text(bill.restaurantThanks, w / 2, y + 4, { align: 'center' });
+
+      doc.save(bill.invoiceNo + '.pdf');
+      showToast('PDF downloaded!', 'success');
+    }
+
+    /* ────────────────────────────────
+       View Bill (History)
+       ──────────────────────────────── */
+    function openViewBill(id) {
+      const bill = bills.find(b => b.id === id);
+      if (!bill) return;
+      currentBillForView = bill;
+      document.getElementById('view-bill-modal-title').textContent = bill.invoiceNo;
+      document.getElementById('view-bill-body').innerHTML = buildInvoiceHTML(bill);
+      document.getElementById('view-bill-modal').classList.add('open');
+    }
+    function closeViewBillModal() {
+      document.getElementById('view-bill-modal').classList.remove('open');
+      currentBillForView = null;
+    }
+    function printViewedBill() {
+      const html = document.getElementById('view-bill-body').innerHTML;
+      document.getElementById('print-area').innerHTML = html;
+      document.getElementById('print-area').style.display = 'block';
+      window.print();
+      document.getElementById('print-area').style.display = 'none';
+      document.getElementById('print-area').innerHTML = '';
+    }
+    function downloadViewedPDF() {
+      if (!currentBillForView) return;
+      generatePDFForBill(currentBillForView);
+    }
+    function deleteViewedBill() {
+      if (!currentBillForView) return;
+      showConfirmDialog(
+        'Delete Bill',
+        `Delete ${currentBillForView.invoiceNo}? This cannot be undone.`,
+        () => {
+          bills = bills.filter(b => b.id !== currentBillForView.id);
+          saveBills();
+          closeViewBillModal();
+          renderHistory();
+          renderDashboard();
+          showToast('Bill deleted', 'success');
+        },
+        'Delete'
+      );
+    }
+
+    /* ────────────────────────────────
+       HISTORY
+       ──────────────────────────────── */
+    function renderHistory() {
+      const q = (document.getElementById('history-search')?.value || '').toLowerCase();
+      let filtered = [...bills].sort((a, b) => new Date(b.date) - new Date(a.date));
+      if (q) filtered = filtered.filter(b =>
+        b.invoiceNo.toLowerCase().includes(q) ||
+        fmtDate(b.date).toLowerCase().includes(q) ||
+        String(b.total).includes(q)
+      );
+
+      const container = document.getElementById('history-list');
+      if (!filtered.length) {
+        container.innerHTML = `<div class="empty-state">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <polyline points="12 8 12 12 14 14"/>
+        <path d="M3.05 11a9 9 0 1 1 .5 4"/><polyline points="3 16 3 11 8 11"/>
+      </svg>
+      <p>${bills.length ? 'No results found' : 'No bills yet. Generate your first bill!'}</p>
+    </div>`;
+        return;
+      }
+      container.innerHTML = filtered.map(b => `
+    <div class="bill-card" onclick="openViewBill('${b.id}')">
+      <div class="bill-card-info">
+        <div class="bill-no">${esc(b.invoiceNo)}</div>
+        <div class="bill-date">${fmtDate(b.date)}</div>
+        <div class="bill-items-count">${b.items.length} item${b.items.length > 1 ? 's' : ''}</div>
+      </div>
+      <div class="bill-amount">${fmt(b.total)}</div>
+    </div>`).join('');
+    }
+
+    /* ────────────────────────────────
+       MENU MANAGEMENT
+       ──────────────────────────────── */
+    function openMenuForm(id) {
+      const card = document.getElementById('menu-form-card');
+      card.style.display = 'block';
+      document.getElementById('menu-form-title').textContent = id ? 'Edit Menu Item' : 'Add Menu Item';
+      document.getElementById('save-item-btn').textContent = id ? 'Update Item' : 'Save Item';
+      if (id) {
+        const item = menu.find(m => m.id === id);
+        if (!item) return;
+        editingMenuId = id;
+        document.getElementById('item-name').value = item.name;
+        document.getElementById('item-price').value = item.price;
+        document.getElementById('item-category').value = item.category || '';
+      } else {
+        editingMenuId = null;
+        document.getElementById('item-name').value = '';
+        document.getElementById('item-price').value = '';
+        document.getElementById('item-category').value = '';
+      }
+      updateCategoryDatalist();
+      card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      document.getElementById('item-name').focus();
+    }
+
+    function cancelMenuForm() {
+      document.getElementById('menu-form-card').style.display = 'none';
+      editingMenuId = null;
+    }
+
+    function saveMenuItem() {
+      const name = document.getElementById('item-name').value.trim();
+      const price = parseFloat(document.getElementById('item-price').value);
+      const cat = document.getElementById('item-category').value.trim();
+
+      if (!name) { showToast('Item name is required', 'danger'); return; }
+      if (isNaN(price) || price < 0) { showToast('Enter a valid price', 'danger'); return; }
+
+      if (editingMenuId) {
+        const idx = menu.findIndex(m => m.id === editingMenuId);
+        if (idx >= 0) { menu[idx] = { ...menu[idx], name, price, category: cat }; }
+        showToast('Item updated!', 'success');
+      } else {
+        menu.push({ id: uid(), name, price, category: cat });
+        showToast('Item added!', 'success');
+      }
+      saveMenu();
+      cancelMenuForm();
+      renderMenuList();
+      updateCategoryDatalist();
+    }
+
+    function deleteMenuItem(id) {
+      const item = menu.find(m => m.id === id);
+      if (!item) return;
+      showConfirmDialog(
+        'Delete Item',
+        `Delete "${item.name}" from the menu?`,
+        () => {
+          menu = menu.filter(m => m.id !== id);
+          saveMenu();
+          renderMenuList();
+          renderMenuTiles();
+          showToast('Item deleted', 'success');
+        },
+        'Delete'
+      );
+    }
+
+    function renderMenuList() {
+      const q = (document.getElementById('menu-search')?.value || '').toLowerCase();
+      const filtered = menu.filter(m =>
+        !q || m.name.toLowerCase().includes(q) || (m.category || '').toLowerCase().includes(q)
+      );
+      const container = document.getElementById('menu-list');
+      if (!filtered.length) {
+        container.innerHTML = `<div class="empty-state">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
+        <line x1="8" y1="18" x2="21" y2="18"/>
+      </svg>
+      <p>${menu.length ? 'No items match' : 'No menu items yet. Add your first item!'}</p>
+    </div>`;
+        return;
+      }
+      // Group by category
+      const categories = [...new Set(filtered.map(m => m.category || '(Uncategorized)'))];
+      container.innerHTML = categories.map(cat => {
+        const items = filtered.filter(m => (m.category || '(Uncategorized)') === cat);
+        return `
+      <div class="section-label" style="margin-top:14px;margin-bottom:8px">${esc(cat)}</div>
+      ${items.map(m => `
+        <div class="menu-item-card">
+          <div class="menu-item-info">
+            <div class="menu-item-name">${esc(m.name)}</div>
+            ${m.category ? `<div class="menu-item-category">${esc(m.category)}</div>` : ''}
+          </div>
+          <div class="menu-item-price">${fmt(m.price)}</div>
+          <div class="menu-item-actions">
+            <button class="btn btn-outline btn-sm" onclick="openMenuForm('${m.id}')">Edit</button>
+            <button class="btn btn-sm" style="color:var(--danger);border:1.5px solid var(--border)" onclick="deleteMenuItem('${m.id}')">Del</button>
+          </div>
+        </div>
+      `).join('')}
+    `;
+      }).join('');
+    }
+
+    function updateCategoryDatalist() {
+      const cats = [...new Set(menu.map(m => m.category).filter(Boolean))];
+      document.getElementById('categories-list').innerHTML = cats.map(c => `<option value="${esc(c)}">`).join('');
+    }
+
+    /* ────────────────────────────────
+       SETUP
+       ──────────────────────────────── */
+    function fillSetupForm() {
+      document.getElementById('setup-name').value = setup.name || '';
+      document.getElementById('setup-address').value = setup.address || '';
+      document.getElementById('setup-phone').value = setup.phone || '';
+      document.getElementById('setup-gstin').value = setup.gstin || '';
+      document.getElementById('setup-thanks').value = setup.thanks || '';
+      if (setup.logo) {
+        const img = document.getElementById('logo-preview');
+        img.src = setup.logo; img.style.display = 'block';
+      }
+      if (setup.upi) {
+        const img = document.getElementById('upi-preview');
+        img.src = setup.upi; img.style.display = 'block';
+      }
+    }
+
+    function saveSetup() {
+      const name = document.getElementById('setup-name').value.trim();
+      if (!name) { showToast('Restaurant name is required', 'danger'); return; }
+      setup.name = name;
+      setup.address = document.getElementById('setup-address').value.trim();
+      setup.phone = document.getElementById('setup-phone').value.trim();
+      setup.gstin = document.getElementById('setup-gstin').value.trim();
+      setup.thanks = document.getElementById('setup-thanks').value.trim() || 'Thank you for dining with us!';
+      localStorage.setItem(LS.SETUP, JSON.stringify(setup));
+      updateTopbar();
+      showToast('Settings saved!', 'success');
+    }
+
+    function handleLogoUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      if (file.size > 5 * 1024 * 1024) { showToast('Logo must be under 5MB', 'danger'); return; }
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setup.logo = ev.target.result;
+        const img = document.getElementById('logo-preview');
+        img.src = setup.logo; img.style.display = 'block';
+        localStorage.setItem(LS.SETUP, JSON.stringify(setup));
+        updateTopbar();
+        showToast('Logo saved!', 'success');
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function handleUpiUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      if (file.size > 5 * 1024 * 1024) { showToast('QR code must be under 5MB', 'danger'); return; }
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setup.upi = ev.target.result;
+        const img = document.getElementById('upi-preview');
+        img.src = setup.upi; img.style.display = 'block';
+        localStorage.setItem(LS.SETUP, JSON.stringify(setup));
+        showToast('UPI QR saved!', 'success');
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function confirmClearData() {
+      showConfirmDialog(
+        'Clear All Data',
+        'This will delete ALL menu items, bills, and settings. This cannot be undone!',
+        () => {
+          Object.values(LS).forEach(k => localStorage.removeItem(k));
+          location.reload();
+        },
+        'Clear Everything'
+      );
+    }
+
+    /* ────────────────────────────────
+       Scanned Invoice (QR link)
+       ──────────────────────────────── */
+    function showScannedInvoice(billId) {
+      // Hide all sections and show only the scan section
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      document.querySelector('.bottom-nav').style.display = 'none';
+      const section = document.getElementById('scan-invoice-section');
+      if (!section) return;
+      section.classList.add('active');
+
+      const bill = bills.find(b => b.id === billId);
+      const contentEl = document.getElementById('scan-invoice-content');
+      if (!bill) {
+        contentEl.innerHTML = `
+      <div class="card" style="text-align:center;padding:32px">
+        <p style="font-size:15px;color:var(--text2)">Bill not found. This invoice may have been deleted or is from another device.</p>
+        <p style="font-size:12px;color:var(--text3);margin-top:8px">Invoice ID: ${esc(billId)}</p>
+      </div>`;
+        return;
+      }
+      contentEl.innerHTML = buildInvoiceHTML(bill) + `
+    <div style="margin-top:16px;display:flex;gap:8px">
+      <button class="btn btn-primary btn-full" onclick="window._activeBill=bills.find(b=>b.id==='${bill.id}');downloadPDF()">Download PDF</button>
+      <button class="btn btn-outline btn-full" onclick="window.print()">Print</button>
+    </div>`;
+    }
+
+    /* ────────────────────────────────
+       Confirm Dialog
+       ──────────────────────────────── */
+    function showConfirmDialog(title, msg, onOk, okLabel = 'Delete') {
+      document.getElementById('confirm-title').textContent = title;
+      document.getElementById('confirm-message').textContent = msg;
+      document.getElementById('confirm-ok-btn').textContent = okLabel;
+      confirmCallback = onOk;
+      document.getElementById('confirm-dialog').classList.add('open');
+    }
+    function closeConfirmDialog() {
+      document.getElementById('confirm-dialog').classList.remove('open');
+      confirmCallback = null;
+    }
+    function confirmOk() {
+      closeConfirmDialog();
+      if (confirmCallback) confirmCallback();
+    }
+
+    /* ────────────────────────────────
+       Toast Notifications
+       ──────────────────────────────── */
+    function showToast(msg, type = '') {
+      const container = document.getElementById('toast-container');
+      const el = document.createElement('div');
+      el.className = 'toast' + (type ? ' ' + type : '');
+      el.textContent = msg;
+      container.appendChild(el);
+      setTimeout(() => {
+        el.style.animation = 'toastOut 300ms ease forwards';
+        setTimeout(() => el.remove(), 300);
+      }, 3000);
+    }
+
+    /* ────────────────────────────────
+       Persistence Helpers
+       ──────────────────────────────── */
+    function saveMenu() { localStorage.setItem(LS.MENU, JSON.stringify(menu)); }
+    function saveBills() { localStorage.setItem(LS.BILLS, JSON.stringify(bills)); }
+
+    /* ────────────────────────────────
+       Utility Helpers
+       ──────────────────────────────── */
+    function uid() { return Math.random().toString(36).substr(2, 9) + Date.now().toString(36); }
+    function fmt(n) { return '₹' + Number(n).toFixed(2); }
+    function fmtDate(d) {
+      return new Date(d).toLocaleString('en-IN', {
+        day: '2-digit', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', hour12: true
+      });
+    }
+    function esc(s) {
+      if (!s) return '';
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    /* ────────────────────────────────
+       Close modals on overlay click
+       ──────────────────────────────── */
+    document.getElementById('invoice-modal').addEventListener('click', function (e) {
+      if (e.target === this) closeInvoiceModal();
+    });
+    document.getElementById('view-bill-modal').addEventListener('click', function (e) {
+      if (e.target === this) closeViewBillModal();
+    });
+    document.getElementById('confirm-dialog').addEventListener('click', function (e) {
+      if (e.target === this) closeConfirmDialog();
+    });
+
+    /* ────────────────────────────────
+       Boot
+       ──────────────────────────────── */
+    init();
+  </script>
+</body>
+
+</html>
