@@ -2088,22 +2088,24 @@
       bills.push(bill);
       saveBills();
       try {
-       await supabase
-  .from("bills")
-  .insert([{
-    id: bill.id,
-    invoice_no: bill.invoiceNo,
-    date: bill.date,
-    items: bill.items,
-    subtotal: bill.subtotal,
-    discount: bill.discount,
-    tax: bill.tax,
-    total: bill.total
-  }]);
-console.log("Saved to Supabase");
+  const { error } = await supabase
+    .from("bills")
+    .insert([{
+      id: bill.id,
+      invoice_no: bill.invoiceNo,
+      date: bill.date,
+      items: bill.items,
+      subtotal: bill.subtotal,
+      discount: bill.discount,
+      tax: bill.tax,
+      total: bill.total
+    }]);
+
       if (error) {
         console.error(error);
-        alert("Supabase Error");
+        alert(error.message);
+      } else {
+        console.log("Saved to Supabase");
       }
     } catch (err) {
       console.error(err);
@@ -2113,17 +2115,7 @@ console.log("Saved to Supabase");
       showInvoiceModal(bill);
       showToast('Bill generated! ' + invoiceNo, 'success');
     }
-    await supabase
-  .from("bills")
-  .insert([{
-    invoice_no: bill.invoiceNo,
-    date: bill.date,
-    items: bill.items,
-    subtotal: bill.subtotal,
-    discount: bill.discount,
-    tax: bill.tax,
-    total: bill.total
-  }]);
+  
     /* ────────────────────────────────
        Invoice HTML builder
        ──────────────────────────────── */
