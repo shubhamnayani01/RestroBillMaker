@@ -2096,7 +2096,7 @@ const supabase = window.supabase.createClient(
       bills.push(bill);
       saveBills();
       try {
-  const { error } = await 
+  const { error } = await supabase 
     .from("bills")
     .insert([{
       id: bill.id,
