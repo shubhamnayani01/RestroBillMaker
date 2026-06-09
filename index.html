@@ -2560,31 +2560,47 @@
     /* ────────────────────────────────
        Scanned Invoice (QR link)
        ──────────────────────────────── */
-    function showScannedInvoice(billId) {
-      // Hide all sections and show only the scan section
-      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-      document.querySelector('.bottom-nav').style.display = 'none';
-      const section = document.getElementById('scan-invoice-section');
-      if (!section) return;
-      section.classList.add('active');
+async function showScannedInvoice(billId) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelector('.bottom-nav').style.display = 'none';
 
-      const bill = bills.find(b => b.id === billId);
-      const contentEl = document.getElementById('scan-invoice-content');
-      if (!bill) {
-        contentEl.innerHTML = `
+  const section = document.getElementById('scan-invoice-section');
+  if (!section) return;
+
+  section.classList.add('active');
+
+  const contentEl = document.getElementById('scan-invoice-content');
+
+  contentEl.innerHTML = '<div class="card">Loading bill...</div>';
+
+  const { data: bill, error } = await db
+    .from('bills')
+    .select('*')
+    .eq('id', billId)
+    .single();
+
+  if (error || !bill) {
+    contentEl.innerHTML = `
       <div class="card" style="text-align:center;padding:32px">
-        <p style="font-size:15px;color:var(--text2)">Bill not found. This invoice may have been deleted or is from another device.</p>
-        <p style="font-size:12px;color:var(--text3);margin-top:8px">Invoice ID: ${esc(billId)}</p>
+        <p>Bill not found.</p>
+        <p>${billId}</p>
       </div>`;
-        return;
-      }
-      contentEl.innerHTML = buildInvoiceHTML(bill) + `
-    <div style="margin-top:16px;display:flex;gap:8px">
-      <button class="btn btn-primary btn-full" onclick="window._activeBill=bills.find(b=>b.id==='${bill.id}');downloadPDF()">Download PDF</button>
-      <button class="btn btn-outline btn-full" onclick="window.print()">Print</button>
-    </div>`;
-    }
+    return;
+  }
 
+  contentEl.innerHTML =
+    buildInvoiceHTML(bill) +
+    `
+    <div style="margin-top:16px;display:flex;gap:8px">
+      <button class="btn btn-primary btn-full"
+        onclick="window._activeBill=${JSON.stringify(bill).replace(/"/g,'&quot;')};downloadPDF()">
+        Download PDF
+      </button>
+      <button class="btn btn-outline btn-full" onclick="window.print()">
+        Print
+      </button>
+    </div>`;
+}
     /* ────────────────────────────────
        Confirm Dialog
        ──────────────────────────────── */
