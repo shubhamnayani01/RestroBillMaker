@@ -2561,6 +2561,7 @@
        Scanned Invoice (QR link)
        ──────────────────────────────── */
 async function showScannedInvoice(billId) {
+  console.log("QR Bill ID:", billId);
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.querySelector('.bottom-nav').style.display = 'none';
 
